@@ -3,7 +3,6 @@ Universal lockfile (not a daemon)
 
 * `locked [--tracked=REGEXP --] ( FILE )+`
 * `locked .../Dockerfile`
-* looks for single lines matching `^(#|//) +locked--[^:]+: .+$` anywhere in the file
 * looks for single lines matching `^(#|//) +locked +[^ :]+:.+$` anywhere in the file
 * applies matchers
 	* `OCI-image-FROM`: resolves an OCI image URI from a registry to its sha256
@@ -92,4 +91,21 @@ http_archive(
     urls = ["https://github.com/glfw/glfw/releases/download/3.3.2/glfw-3.3.2.bin.MACOS.zip"],
 )
 # locked }
+```
+
+### in-the-wild text
+Requires a `/Lockfile`
+```
+Bla, bla blabla: https://github.com/fenollp/locked/blob/main/README.md
+blblblbl
+```
+`locked .` =>
+```
+Lockfile
+---
+https://github.com/fenollp/locked/blob/main/README.md => https://github.com/fenollp/locked/blob/38004f0260b4ad77daa873b7f7428fa151771a0d/README.md
+```
+```
+Bla, bla blabla: https://github.com/fenollp/locked/blob/38004f0260b4ad77daa873b7f7428fa151771a0d/README.md
+blblblbl
 ```
