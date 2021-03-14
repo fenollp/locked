@@ -109,3 +109,11 @@ https://github.com/fenollp/locked/blob/main/README.md => https://github.com/feno
 Bla, bla blabla: https://github.com/fenollp/locked/blob/38004f0260b4ad77daa873b7f7428fa151771a0d/README.md
 blblblbl
 ```
+
+## Lockfile
+* "pattern" => "locked"
+    * str => str :: mapping
+        * solves the simplest case (in-the-wild text)
+        * solves Dockerfile FROM
+    * dict => [mapping]
+        * solves complex http_archive (constraints + multiple strings outputed)
