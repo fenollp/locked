@@ -127,16 +127,23 @@ blblblbl
 ---
 `../Lockfile`
 ```hcl
-#!/usr/bin/env locked --version-is=1
+at = "2009-11-10 23:00:00 +0000 UTC"
 
 # Some comment
 # File is fmt'd and comments are kept when resolve gives outputs.
 
 track "goreleaser/goreleaser" {
     using = "get-oci-image-sha256"
-    gives = {  # Code generated; DO NOT EDIT
+    # See below that this is probably not exactly what you want...
+
+    # Code generated; DO NOT EDIT
+    tracking "See https://goreleaser/goreleaser for more info" {
         at = "2009-11-10 23:00:00 +0000 UTC"
-        tracked = "goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2"
+        gives = "See https://goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 for more info"
+    }
+    tracking "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser AS go-releaser" {
+        at = "2009-11-10 23:00:00 +0000 UTC"
+        gives = "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 AS go-releaser"
     }
 }
 ```
@@ -159,6 +166,7 @@ track "^from\s+(?:--[^\s]+\s+)*([^\s]+)" { # Considered a regex iff starts (or e
     }
     tracking "from python:3.6" {
         at = "2009-11-10 23:00:00 +0000 UTC"
+        count = 3
         gives = "from python@sha256:d264d2c9cf7d4b43908150e0bcd2eefe275aba956ff718169fc3c1f7727a0d0a"
     }
 }
@@ -175,15 +183,22 @@ track "^(https://github.com/[^/]+/[^/]+/releases/latest" {
 ```
 ---
 * re-write Lockfile on non-zero resolutions
-* enforce hashbang (mentions version)
-    * so language can be changed
-    * actually don't: forward compat MUST be ensured
+* backwards compat MUST be ensured
     * On first run: prepend UTC datetime to all Lockfile.s within git repo
     * On next runs:
         * only select predefined rules as they were at that time
         * prepend that time to all new Lockfile.s
     * On next runs and after 3 months: warn about running `--upgrade`
-        * this (after checking there are no git changes) sets times to now then locks
+* `--update`: refresh tracked iff no . changes
+* `--upgrade`: (iff no . changes) sets times to now then `--update`
+* `--check`: fails if any of these is false: (writes nothing)
+    * any "gives" do not match "count" (default: 1) times
+    * any "track" matches nothing
+    * it is possible to `--upgrade`
+* `lck show [.Filter]`: prints HCL of [matching .Filter over] all rules applying at $PWD
+* `lck help`: prints usage
+* `lck update [--to=TAG]`: updates this binary in place
+* `lck version`: prints version
 * resolve Lockfile from XDG, then .git/Lockfile, then recursively down
     * exactly like .gitignore.s
     * inner Lockfile has priority over parent
@@ -192,7 +207,7 @@ track "^(https://github.com/[^/]+/[^/]+/releases/latest" {
         * but disallow more than one Lockfile.* per directory
 * error out if . isn't within a git repo || . has changes
 * `using = "get-oci-image-sha256"` is
-    1. trim tracked string
+    1. set `${TRACKED}` to trimmed `TrackReq.Track`
     1. `docker pull '${TRACKED}' && docker inspect --format='{{.RepoDigests}}' '${TRACKED}'`
     1. ensure output is list of length 1 then resolve to first element
     1. remove image if it was we that just pulled it (good enough heuristic: worst case is image is pulled twice)
