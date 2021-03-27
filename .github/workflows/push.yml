@@ -1,0 +1,32 @@
+name: push
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+jobs:
+  buildkit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: docker/setup-qemu-action@v1
+    - uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - run: DOCKER_BUILDKIT=1 docker build -o . .
+    - run: ./lck version
+    - run: echo LINUX=$(sha256sum ./lck | awk '{print $1}') >>$GITHUB_ENV
+
+    # No docker on macos
+    - run: DOCKER_BUILDKIT=1 docker build --platform=darwin/amd64 -o . .
+    - run: echo DARWIN=$(sha256sum ./lck | awk '{print $1}') >>$GITHUB_ENV
+    - run: [[ "$DARWIN" != "$LINUX" ]]
+
+    # invalid windows mount type: 'bind'
+    - run: DOCKER_BUILDKIT=1 docker build --platform=windows/amd64 -o . .
+    - run: echo WINDOWS=$(sha256sum ./lck.exe | awk '{print $1}') >>$GITHUB_ENV
+    - run: [[ "$WINDOWS" != "$LINUX" ]]
+    - run: [[ "$WINDOWS" != "$DARWIN" ]]

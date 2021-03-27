@@ -133,17 +133,39 @@ at = "2009-11-10 23:00:00 +0000 UTC"
 # File is fmt'd and comments are kept when resolve gives outputs.
 
 track "goreleaser/goreleaser" {
-    using = "get-oci-image-sha256"
+    use = "get-oci-image-sha256"
     # See below that this is probably not exactly what you want...
 
     # Code generated; DO NOT EDIT
+    tracking "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser AS go-releaser" {
+        at = "2009-11-10 23:00:00 +0000 UTC"
+        gives = "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 AS go-releaser"
+    }
     tracking "See https://goreleaser/goreleaser for more info" {
         at = "2009-11-10 23:00:00 +0000 UTC"
         gives = "See https://goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 for more info"
     }
+}
+
+
+named "oci-image-from" {
+    skip = [
+        "FROM go-releaser AS base",
+        "FROM base",
+        "FROM scratch AS binaries",
+        "FROM binaries-$PREBUILT AS binaries",
+        "FROM binaries",
+    ]
+
+    # Code generated; DO NOT EDIT
     tracking "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser AS go-releaser" {
         at = "2009-11-10 23:00:00 +0000 UTC"
         gives = "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 AS go-releaser"
+    }
+    tracking "from python:3.6" {
+        at = "2009-11-10 23:00:00 +0000 UTC"
+        count = 3
+        gives = "from python@sha256:d264d2c9cf7d4b43908150e0bcd2eefe275aba956ff718169fc3c1f7727a0d0a"
     }
 }
 ```
@@ -157,43 +179,41 @@ track "^from\s+(?:--[^\s]+\s+)*([^\s]+)" { # Considered a regex iff starts (or e
                                            # MUST have exactly 1 capturing group
                                            # Multiline regexp by default
                                            # Case-sensitive iff contains uppercase (in which case (?ms) is prepended to the regex, instead of (?ims))
-    using = "get-oci-image-sha256"
-
-    # Code generated; DO NOT EDIT
-    tracking "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser AS go-releaser" {
-        at = "2009-11-10 23:00:00 +0000 UTC"
-        gives = "FROM --platform=$BUILDPLATFORM goreleaser/goreleaser@sha256:fa75344740e66e5bb55ad46426eb8e6c8dedbd3dcfa15ec1c41897b143214ae2 AS go-releaser"
-    }
-    tracking "from python:3.6" {
-        at = "2009-11-10 23:00:00 +0000 UTC"
-        count = 3
-        gives = "from python@sha256:d264d2c9cf7d4b43908150e0bcd2eefe275aba956ff718169fc3c1f7727a0d0a"
-    }
+    name = "oci-image-from" # required in global setting
+    use = "get-oci-image-sha256" # required in all "track"
 }
+
 
 # https://docs.github.com/en/github/managing-files-in-a-repository/getting-permanent-links-to-files
 track "^https://github.com/[^/]+/[^/]+/(?:blame|blob|tree)/([^/]+)/[^/]+" {
-    using = "permalink-github"
+    use = "permalink-github"
 }
+
 
 # Resolves to URL to latest release
 track "^(https://github.com/[^/]+/[^/]+/releases/latest" {
-    using = "permalink-github-latest-release"
+    use = "permalink-github-latest-release"
 }
 ```
 ---
 * re-write Lockfile on non-zero resolutions
+    * fmt automatically, no opt-out
+    * MUST separate "track" blocks with 2 empty lines (git-merge friendly)
 * backwards compat MUST be ensured
     * On first run: prepend UTC datetime to all Lockfile.s within git repo
+        * for other ones
+            <!-- * duplicate rules to root git lockfile -->
     * On next runs:
         * only select predefined rules as they were at that time
         * prepend that time to all new Lockfile.s
-    * On next runs and after 3 months: warn about running `--upgrade`
-* `--update`: refresh tracked iff no . changes
-* `--upgrade`: (iff no . changes) sets times to now then `--update`
-* `--check`: fails if any of these is false: (writes nothing)
+    * On next runs and after 3 months: warn about running `lck`
+* `lck`: refresh tracked iff no . changes (runs `--check` first?)
+* `lck --upgrade`: (iff no . changes) sets times to now then `lck`
+* `lck --check`: (readonly) fails if any of:
     * any "gives" do not match "count" (default: 1) times
+    * any "skip" item does not match
     * any "track" matches nothing
+* `lck --check-upgrade`: (readonly) fails if any of:
     * it is possible to `--upgrade`
 * `lck show [.Filter]`: prints HCL of [matching .Filter over] all rules applying at $PWD
 * `lck help`: prints usage
@@ -202,17 +222,19 @@ track "^(https://github.com/[^/]+/[^/]+/releases/latest" {
 * resolve Lockfile from XDG, then .git/Lockfile, then recursively down
     * exactly like .gitignore.s
     * inner Lockfile has priority over parent
-        * error when `>1 "track" && !=1 "using"` in same Lockfile though
+        * error when `>1 "track" && !=1 "use"` in same Lockfile though
     * allow extensions: `(none)` | `.hcl` | `.json` | `.yaml`
         * but disallow more than one Lockfile.* per directory
 * error out if . isn't within a git repo || . has changes
-* `using = "get-oci-image-sha256"` is
+* `use = "get-oci-image-sha256"` is
     1. set `${TRACKED}` to trimmed `TrackReq.Track`
     1. `docker pull '${TRACKED}' && docker inspect --format='{{.RepoDigests}}' '${TRACKED}'`
     1. ensure output is list of length 1 then resolve to first element
     1. remove image if it was we that just pulled it (good enough heuristic: worst case is image is pulled twice)
 * when is TTY print output of each running resolver in parallel, like `DOCKER_BUILDKIT=1 docker build`
-* opt-out a line from rewriting by adding a line just above that contains `Lockfile: skip next line`
+* opt-out a line from rewriting by
+    * adding a line just above that contains `Lockfile: skip next line`
+    * or, with the "skip" list (that matches the whole tracked)
 * plugin system (based on [Dockerfile frontend syntaxes](https://github.com/moby/buildkit/blob/4eca10a46c7f309582e60dcc52b54fe7a5c7e3d2/frontend/dockerfile/docs/syntax.md))
     * `service Lockfile { rpc Track(TrackReq) returns (TrackRep); }`
         * `TrackReq { Track, Whole string }`

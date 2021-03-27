@@ -1,0 +1,3 @@
+track "golang:1-alpine" {
+    use = "get-oci-image-sha256"
+}
