@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fenollp/locked/locked"
 )
@@ -9,7 +10,7 @@ import (
 func main() {
 	t, err := locked.DecodeFile("Lockfile")
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 	fmt.Printf(">>> %#v\n", t)
 }
