@@ -242,3 +242,8 @@ track "^(https://github.com/[^/]+/[^/]+/releases/latest" {
             * `TrackReq.Whole`: the value or the whole regex match (can be multiple lines)
         * `TrackRep { Gives string }`
             * `TrackRep.Gives`: locked value with `Whole` context (i.e. `TrackReq.Whole` with `TrackReq.Track` replaced)
+
+# wip
+* https://pkg.go.dev/github.com/hashicorp/hcl/v2#section-directories
+* https://github.com/hashicorp/hcl/issues/349
+* https://github.com/safe-waters/docker-lock
