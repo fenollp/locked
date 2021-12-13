@@ -8,9 +8,7 @@ import (
 )
 
 func main() {
-	t, err := locked.DecodeFile("Lockfile")
-	if err != nil {
+	if err := locked.Load(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-	fmt.Printf(">>> %#v\n", t)
 }
